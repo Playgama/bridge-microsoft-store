@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PlaygamaBridgeMicrosoftStore (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PlaygamaBridgeMicrosoftStore (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
