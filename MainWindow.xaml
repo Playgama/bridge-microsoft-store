@@ -8,8 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:wv2="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d"
-    Title="PlaygamaBridgeMicrosoftStore"
-    Width="1100" Height="720">
+    Title="PlaygamaBridgeMicrosoftStore">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
