@@ -1,31 +1,70 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Microsoft.Web.WebView2.Core;
 
 namespace PlaygamaBridgeMicrosoftStore
 {
-    /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainWindow : Window
     {
         public MainWindow()
         {
             InitializeComponent();
+            _ = InitializeAsync();
+        }
+
+        private async Task InitializeAsync()
+        {
+            await GameWebView.EnsureCoreWebView2Async();
+            GameWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+
+            var htmlPath = Path.Combine(AppContext.BaseDirectory, "game", "index.html");
+            if (!File.Exists(htmlPath))
+            {
+                AppendLog($"Missing file: {htmlPath}");
+                GameWebView.NavigateToString("<!doctype html><html><body>game/index.html not found</body></html>");
+                return;
+            }
+
+            // Для простоты: читаем файл и грузим как строку
+            var html = await File.ReadAllTextAsync(htmlPath);
+            GameWebView.NavigateToString(html);
+
+            AppendLog($"Loaded: {htmlPath}");
+        }
+
+        private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+        {
+            var msg = args.TryGetWebMessageAsString();
+            AppendLog($"Web ? Host: {msg}");
+
+            // Пример ответа обратно в web
+            var reply = $"Host received: {msg}";
+            sender.PostWebMessageAsString(reply);
+            AppendLog($"Host ? Web: {reply}");
+        }
+
+        private void SendButton_Click(object sender, RoutedEventArgs e)
+        {
+            var msg = MessageTextBox.Text ?? string.Empty;
+            if (GameWebView.CoreWebView2 is null)
+            {
+                AppendLog("CoreWebView2 not initialized yet.");
+                return;
+            }
+
+            GameWebView.CoreWebView2.PostWebMessageAsString(msg);
+            AppendLog($"Host ? Web: {msg}");
+        }
+
+        private void AppendLog(string text)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                LogListBox.Items.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {text}");
+            });
         }
     }
 }
