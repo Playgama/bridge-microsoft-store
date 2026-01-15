@@ -1,0 +1,17 @@
+{
+    "$schema": "https://bridge.playgama.com/v1/stable/schema.json",
+    "forciblySetPlatformId": "microsoft_score",
+    "advertisement": {
+        "interstitial": {
+            "preloadOnStart": true
+        },
+        "rewarded": {
+            "preloadOnStart": true
+        },
+        "useBuiltInErrorPopup": true,
+        "backfillId": ""
+    },
+    "payments": [],
+    "leaderboards": [],
+    "sendAnalyticsEvents": true
+}
