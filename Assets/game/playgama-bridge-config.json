@@ -1,6 +1,6 @@
 {
     "$schema": "https://bridge.playgama.com/v1/stable/schema.json",
-    "forciblySetPlatformId": "microsoft_score",
+    "forciblySetPlatformId": "microsoft_store",
     "advertisement": {
         "interstitial": {
             "preloadOnStart": true
