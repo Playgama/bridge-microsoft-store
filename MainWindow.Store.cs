@@ -97,117 +97,38 @@ namespace PlaygamaBridgeMicrosoftStore
 
             try
             {
-                // 1) Load full catalog (all add-on types)
                 var kinds = new[] { "Consumable", "Durable", "UnmanagedConsumable" };
-                var catalogResult = await _store.GetAssociatedStoreProductsAsync(kinds);
 
-                if (catalogResult.ExtendedError is not null && catalogResult.ExtendedError.HResult != 0)
+                var result = await _store.GetUserCollectionAsync(kinds);
+
+                if (result.ExtendedError is not null && result.ExtendedError.HResult != 0)
                 {
                     Reply(sender, new JObject
                     {
                         ["action"] = ActionName.GET_PURCHASES,
                         ["success"] = false,
                         ["error"] = "store_error",
-                        ["extendedError"] = catalogResult.ExtendedError.ToString(),
+                        ["extendedError"] = result.ExtendedError.ToString(),
                     }.ToString());
                     return;
                 }
 
-                // Build a map from StoreId -> product info (kind/title/...)
-                var productsById = new Dictionary<string, StoreProduct>(StringComparer.OrdinalIgnoreCase);
-                foreach (var p in catalogResult.Products.Values)
+                var items = new JArray();
+                foreach (var p in result.Products.Values)
                 {
-                    if (!string.IsNullOrWhiteSpace(p.StoreId))
-                        productsById[p.StoreId] = p;
-                }
-
-                // 2) Get licenses (old implementation)
-                var license = await _store.GetAppLicenseAsync();
-                if (license is null)
-                {
-                    Reply(sender, new JObject
+                    items.Add(new JObject
                     {
-                        ["action"] = ActionName.GET_PURCHASES,
-                        ["success"] = false,
-                        ["error"] = "no_license"
-                    }.ToString());
-                    return;
-                }
-
-                var response = new JArray();
-
-                // 3) Merge: start with everything from catalog and enrich with license/balance
-                foreach (var kv in productsById)
-                {
-                    var storeId = kv.Key;
-                    var product = kv.Value;
-
-                    var productKind = NormalizeProductKind(product.ProductKind);
-
-                    var item = new JObject
-                    {
-                        ["id"] = storeId,
-                        ["productKind"] = productKind,
-                        ["title"] = product.Title,
-                    };
-
-                    // License info (durable/subscription typically shows up here; consumables often won't)
-                    if (license.AddOnLicenses.TryGetValue(storeId, out var addOnLicense))
-                    {
-                        item["license"] = new JObject
+                        ["id"] = p.StoreId,
+                        ["productKind"] = p.ProductKind,
+                        ["title"] = p.Title,
+                        ["description"] = p.Description,
+                        ["inAppOfferToken"] = p.InAppOfferToken,
+                        ["hasDigitalDownload"] = p.HasDigitalDownload,
+                        ["price"] = new JObject
                         {
-                            ["isActive"] = addOnLicense.IsActive,
-                            ["expirationDate"] = addOnLicense.ExpirationDate
-                        };
-                    }
-
-                    // Consumable balance (source of truth for consumables)
-                    if (IsConsumableKind(productKind))
-                    {
-                        try
-                        {
-                            var bal = await _store.GetConsumableBalanceRemainingAsync(storeId);
-
-                            item["consumable"] = new JObject
-                            {
-                                ["status"] = bal.Status.ToString(),
-                                ["balanceRemaining"] = bal.BalanceRemaining,
-                                ["trackingId"] = bal.TrackingId.ToString(),
-                                ["extendedError"] = bal.ExtendedError is null || bal.ExtendedError.HResult == 0 ? null : bal.ExtendedError.ToString(),
-                            };
-                        }
-                        catch (Exception ex)
-                        {
-                            // Do not fail whole response; just annotate item.
-                            item["consumable"] = new JObject
-                            {
-                                ["error"] = "exception",
-                                ["message"] = ex.Message,
-                                ["hresult"] = $"0x{ex.HResult:X8}"
-                            };
-                        }
-                    }
-
-                    response.Add(item);
-                }
-
-                // 4) Edge case: license has add-ons not present in catalog response
-                foreach (var kv in license.AddOnLicenses)
-                {
-                    var storeId = kv.Key;
-                    if (productsById.ContainsKey(storeId))
-                        continue;
-
-                    var lic = kv.Value;
-
-                    response.Add(new JObject
-                    {
-                        ["id"] = storeId,
-                        ["productKind"] = "Unknown",
-                        ["license"] = new JObject
-                        {
-                            ["isActive"] = lic.IsActive,
-                            ["expirationDate"] = lic.ExpirationDate
+                            ["formattedBasePrice"] = p.Price?.FormattedBasePrice,
+                            ["formattedPrice"] = p.Price?.FormattedPrice,
+                            ["currencyCode"] = p.Price?.CurrencyCode,
                         }
                     });
                 }
@@ -216,7 +137,7 @@ namespace PlaygamaBridgeMicrosoftStore
                 {
                     ["action"] = ActionName.GET_PURCHASES,
                     ["success"] = true,
-                    ["data"] = response
+                    ["data"] = items
                 }.ToString());
             }
             catch (Exception ex)
@@ -358,8 +279,5 @@ namespace PlaygamaBridgeMicrosoftStore
 
             return productKind;
         }
-
-        private static bool IsConsumableKind(string? productKind)
-            => string.Equals(productKind, "Consumable", StringComparison.OrdinalIgnoreCase);
     }
 }
