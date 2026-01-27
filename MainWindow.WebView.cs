@@ -12,6 +12,9 @@ namespace PlaygamaBridgeMicrosoftStore
         private async Task InitializeAsync()
         {
             await GameWebView.EnsureCoreWebView2Async();
+
+            GameWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+
             GameWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
             var permissionProbeScript = @"
