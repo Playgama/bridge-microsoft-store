@@ -1,8 +1,6 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
-using Windows.Graphics;
-using WinRT.Interop;
-
+using Windows.UI;
 namespace PlaygamaBridgeMicrosoftStore
 {
     public sealed partial class MainWindow
@@ -13,6 +11,20 @@ namespace PlaygamaBridgeMicrosoftStore
             var appWindow = AppWindow.GetFromWindowId(windowId);
 
             appWindow.SetIcon(iconPath);
+
+            if (appWindow.TitleBar is not null)
+            {
+                appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
+
+                appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+                appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+
+                appWindow.TitleBar.ButtonForegroundColor = Colors.White;
+                appWindow.TitleBar.ButtonInactiveForegroundColor = Colors.LightGray;
+
+                appWindow.TitleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF);
+                appWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF);
+            }
         }
     }
 }
