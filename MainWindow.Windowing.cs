@@ -7,13 +7,12 @@ namespace PlaygamaBridgeMicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private void SetInitialSize(int width, int height)
+        private void SetWindowIcon(string iconPath)
         {
-            var hwnd = WindowNative.GetWindowHandle(this);
-            var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
+            var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
             var appWindow = AppWindow.GetFromWindowId(windowId);
 
-            appWindow.Resize(new SizeInt32(width, height));
+            appWindow.SetIcon(iconPath);
         }
     }
 }
