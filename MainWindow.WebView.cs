@@ -1,6 +1,5 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
-using PlaygamaBridgeMicrosoftStore.Server;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -9,6 +8,9 @@ namespace PlaygamaBridgeMicrosoftStore
 {
     public sealed partial class MainWindow
     {
+        private const string AppAssetsHost = "appassets.local";
+        private static readonly Uri AppAssetsBaseUri = new($"https://{AppAssetsHost}/");
+
         private async Task InitializeAsync()
         {
             await GameWebView.EnsureCoreWebView2Async();
@@ -34,12 +36,14 @@ namespace PlaygamaBridgeMicrosoftStore
 
             var htmlPath = Path.Combine(AppContext.BaseDirectory, "Assets", "game");
 
-            _assetServer = new LocalAssetServer(htmlPath);
-            _assetServer.Start();
+            GameWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                AppAssetsHost,
+                htmlPath,
+                CoreWebView2HostResourceAccessKind.Allow);
 
-            AppendLog($"Local server: {_assetServer.BaseUri}");
+            AppendLog($"Virtual host: {AppAssetsBaseUri}");
 
-            GameWebView.Source = new Uri(_assetServer.BaseUri, "index.html");
+            GameWebView.Source = new Uri(AppAssetsBaseUri, "index.html");
 
             _ = IncrementLaunchCount();
         }
