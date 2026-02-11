@@ -9,7 +9,7 @@ using Windows.Services.Store;
 using Windows.Storage;
 using Windows.System;
 
-namespace PlaygamaBridgeMicrosoftStore
+namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace PlaygamaBridgeMicrosoftStore
+namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
