@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using Windows.Storage;
 
-namespace PlaygamaBridgeMicrosoftStore
+namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {

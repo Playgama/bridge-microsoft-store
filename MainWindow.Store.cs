@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.Services.Store;
 
-namespace PlaygamaBridgeMicrosoftStore
+namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {

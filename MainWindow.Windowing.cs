@@ -1,7 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Windows.UI;
-namespace PlaygamaBridgeMicrosoftStore
+namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
