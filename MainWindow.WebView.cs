@@ -81,6 +81,10 @@ namespace PlaygamaBridgeMicrosoftStore
                     HandleInitialize(sender, data);
                     return;
 
+                case ActionName.AUTHORIZE_PLAYER:
+                    _ = HandleAuthorizeAsync(sender, data);
+                    return;
+
                 case ActionName.RATE:
                     _ = HandleRateAsync(sender, data);
                     return;
