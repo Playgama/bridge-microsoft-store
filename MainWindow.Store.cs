@@ -196,6 +196,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                         var responseData = new JObject
                         {
                             ["id"] = storeId,
+                            ["productId"] = storeId,
                             ["status"] = purchaseResult.Status.ToString(),
                             ["extendedError"] = purchaseResult.ExtendedError is null || purchaseResult.ExtendedError.HResult == 0
                                 ? null
