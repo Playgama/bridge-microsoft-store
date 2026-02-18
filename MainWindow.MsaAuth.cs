@@ -25,7 +25,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             try
             {
                 var pca = PublicClientApplicationBuilder
-                    .Create(await GetClientIdAsync().ConfigureAwait(true))
+                    .Create(_config!.ClientId)
                     .WithAuthority(AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount)
                     .WithBroker(new BrokerOptions(BrokerOptions.OperatingSystems.Windows))
                     .Build();

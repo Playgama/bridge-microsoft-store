@@ -14,7 +14,6 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private static readonly Uri ServiceTicketEndpoint = new("https://playgama.com/api/bridge/v1/microsoft-store/service-ticket");
         private static readonly HttpClient Http = new();
 
         private const string PublisherUserFileName = "publisherUser.json";
@@ -208,7 +207,9 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                             try
                             {
                                 var publisherUserId = await GetOrCreatePublisherUserIdAsync().ConfigureAwait(true);
-                                var clientId = await GetClientIdAsync().ConfigureAwait(true);
+
+                                var config = GetConfiguration();
+                                var clientId = config.ClientId;
 
                                 responseData["clientId"] = clientId;
 
@@ -301,7 +302,9 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 ["clientId"] = clientId,
             }.ToString(Newtonsoft.Json.Formatting.None);
 
-            using var req = new HttpRequestMessage(HttpMethod.Post, ServiceTicketEndpoint)
+            var endpoint = GetConfiguration().ServiceTicketEndpoint;
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json")
             };
