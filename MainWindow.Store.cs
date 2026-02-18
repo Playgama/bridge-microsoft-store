@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Services.Store;
+using Windows.Storage;
 
 namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
@@ -266,8 +267,8 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
         private static async Task<string> GetOrCreatePublisherUserIdAsync()
         {
-            var folder = AppContext.BaseDirectory;
-            var path = Path.Combine(folder, PublisherUserFileName);
+            var folder = ApplicationData.Current.LocalFolder;
+            var path = Path.Combine(folder.Path, PublisherUserFileName);
 
             JObject root;
 
