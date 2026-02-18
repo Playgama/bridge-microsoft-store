@@ -10,8 +10,6 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private const string MsaClientId = "";
-
         private static readonly string[] MsaScopes = new[]
         {
             "openid",
@@ -27,7 +25,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             try
             {
                 var pca = PublicClientApplicationBuilder
-                    .Create(MsaClientId)
+                    .Create(await GetClientIdAsync().ConfigureAwait(true))
                     .WithAuthority(AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount)
                     .WithBroker(new BrokerOptions(BrokerOptions.OperatingSystems.Windows))
                     .Build();

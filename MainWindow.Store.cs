@@ -208,9 +208,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                             try
                             {
                                 var publisherUserId = await GetOrCreatePublisherUserIdAsync().ConfigureAwait(true);
-                                responseData["clientId"] = publisherUserId;
+                                var clientId = await GetClientIdAsync().ConfigureAwait(true);
 
-                                var serviceTicket = await GetServiceTicketAsync(publisherUserId).ConfigureAwait(true);
+                                responseData["clientId"] = clientId;
+
+                                var serviceTicket = await GetServiceTicketAsync(clientId).ConfigureAwait(true);
 
                                 if (!string.IsNullOrWhiteSpace(serviceTicket))
                                 {
@@ -292,11 +294,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             return publisherUserId;
         }
 
-        private static async Task<string?> GetServiceTicketAsync(string publisherUserId)
+        private static async Task<string?> GetServiceTicketAsync(string clientId)
         {
             var payload = new JObject
             {
-                ["publisherUserId"] = publisherUserId
+                ["clientId"] = clientId,
             }.ToString(Newtonsoft.Json.Formatting.None);
 
             using var req = new HttpRequestMessage(HttpMethod.Post, ServiceTicketEndpoint)
