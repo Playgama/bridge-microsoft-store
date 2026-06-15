@@ -34,6 +34,72 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(permissionProbeScript);
 
+            // Mirror the game's cursor intent (Cursor.visible) from the Unity canvas onto the
+            // whole document. Unity only sets `cursor:none` on its <canvas>, which can leave the
+            // default arrow visible around the canvas / fail to repaint inside WebView2. Reading
+            // the canvas's computed cursor and replaying it keeps the wrapper neutral: it hides
+            // when the game hides and shows when the game shows, across unlimited toggles.
+            var mirrorCursorScript = @"
+            (function () {
+                function findCanvas() {
+                    return document.querySelector('canvas#unity-canvas')
+                        || document.querySelector('canvas');
+                }
+
+                function sync(canvas) {
+                    var cur = getComputedStyle(canvas).cursor;
+                    document.documentElement.style.cursor = cur;
+                    if (document.body) document.body.style.cursor = cur;
+                }
+
+                function start() {
+                    var canvas = findCanvas();
+                    if (!canvas) { setTimeout(start, 200); return; }
+
+                    var observer = new MutationObserver(function () { sync(canvas); });
+                    observer.observe(canvas, { attributes: true, attributeFilter: ['style', 'class'] });
+
+                    sync(canvas);
+                }
+
+                if (document.readyState === 'loading')
+                    document.addEventListener('DOMContentLoaded', start);
+                else
+                    start();
+            })();";
+
+            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(mirrorCursorScript);
+
+            // Make Pointer Lock (CursorLockMode.Locked) resilient: remember the game's lock
+            // request even when it fails for lack of a user gesture, and replay it on the first
+            // real interaction so the cursor doesn't get stuck visible. The very first gesture
+            // and the post-Esc cooldown are Chromium security rules that self-heal on next click.
+            var pointerLockScript = @"
+            (function () {
+                var pending = null;
+                var native = Element.prototype.requestPointerLock;
+
+                Element.prototype.requestPointerLock = function () {
+                    pending = this;
+                    try { return native.apply(this, arguments); } catch (e) {}
+                };
+
+                function retry() {
+                    if (pending && document.pointerLockElement == null) {
+                        try { native.call(pending); } catch (e) {}
+                    }
+                }
+                ['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(function (ev) {
+                    window.addEventListener(ev, retry, true);
+                });
+
+                document.addEventListener('pointerlockchange', function () {
+                    if (document.pointerLockElement) pending = null;
+                });
+            })();";
+
+            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(pointerLockScript);
+
             var htmlPath = Path.Combine(AppContext.BaseDirectory, "Assets", "game");
 
             GameWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
