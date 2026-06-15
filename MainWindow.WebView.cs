@@ -1,4 +1,4 @@
-﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
@@ -15,10 +15,13 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             await GameWebView.EnsureCoreWebView2Async();
 
-            GameWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+            var web = GameWebView.CoreWebView2;
 
-            GameWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            web.Settings.AreDefaultScriptDialogsEnabled = false;
 
+            web.WebMessageReceived += CoreWebView2_WebMessageReceived;
+
+            // Hide navigator.mediaDevices so games don't prompt for camera/mic permissions.
             var permissionProbeScript = @"
             (function   () {
                 try {
@@ -32,77 +35,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 }
             })();";
 
-            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(permissionProbeScript);
-
-            // Mirror the game's cursor intent (Cursor.visible) from the Unity canvas onto the
-            // whole document. Unity only sets `cursor:none` on its <canvas>, which can leave the
-            // default arrow visible around the canvas / fail to repaint inside WebView2. Reading
-            // the canvas's computed cursor and replaying it keeps the wrapper neutral: it hides
-            // when the game hides and shows when the game shows, across unlimited toggles.
-            var mirrorCursorScript = @"
-            (function () {
-                function findCanvas() {
-                    return document.querySelector('canvas#unity-canvas')
-                        || document.querySelector('canvas');
-                }
-
-                function sync(canvas) {
-                    var cur = getComputedStyle(canvas).cursor;
-                    document.documentElement.style.cursor = cur;
-                    if (document.body) document.body.style.cursor = cur;
-                }
-
-                function start() {
-                    var canvas = findCanvas();
-                    if (!canvas) { setTimeout(start, 200); return; }
-
-                    var observer = new MutationObserver(function () { sync(canvas); });
-                    observer.observe(canvas, { attributes: true, attributeFilter: ['style', 'class'] });
-
-                    sync(canvas);
-                }
-
-                if (document.readyState === 'loading')
-                    document.addEventListener('DOMContentLoaded', start);
-                else
-                    start();
-            })();";
-
-            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(mirrorCursorScript);
-
-            // Make Pointer Lock (CursorLockMode.Locked) resilient: remember the game's lock
-            // request even when it fails for lack of a user gesture, and replay it on the first
-            // real interaction so the cursor doesn't get stuck visible. The very first gesture
-            // and the post-Esc cooldown are Chromium security rules that self-heal on next click.
-            var pointerLockScript = @"
-            (function () {
-                var pending = null;
-                var native = Element.prototype.requestPointerLock;
-
-                Element.prototype.requestPointerLock = function () {
-                    pending = this;
-                    try { return native.apply(this, arguments); } catch (e) {}
-                };
-
-                function retry() {
-                    if (pending && document.pointerLockElement == null) {
-                        try { native.call(pending); } catch (e) {}
-                    }
-                }
-                ['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(function (ev) {
-                    window.addEventListener(ev, retry, true);
-                });
-
-                document.addEventListener('pointerlockchange', function () {
-                    if (document.pointerLockElement) pending = null;
-                });
-            })();";
-
-            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(pointerLockScript);
+            await web.AddScriptToExecuteOnDocumentCreatedAsync(permissionProbeScript);
 
             var htmlPath = Path.Combine(AppContext.BaseDirectory, "Assets", "game");
 
-            GameWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            web.SetVirtualHostNameToFolderMapping(
                 AppAssetsHost,
                 htmlPath,
                 CoreWebView2HostResourceAccessKind.Allow);
@@ -114,8 +51,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             _ = IncrementLaunchCount();
         }
 
-        private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+        private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
+            var core = GameWebView.CoreWebView2;
+
             var msg = args.TryGetWebMessageAsString();
             AppendLog($"Web → Host: {msg}");
 
@@ -137,54 +76,54 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             if (string.IsNullOrWhiteSpace(action))
             {
-                Reply(sender, $"Host received: {msg}");
+                Reply(core, $"Host received: {msg}");
                 return;
             }
 
             switch (action)
             {
                 case ActionName.INITIALIZE:
-                    HandleInitialize(sender, data);
+                    HandleInitialize(core, data);
                     return;
 
                 case ActionName.AUTHORIZE_PLAYER:
-                    _ = HandleAuthorizeAsync(sender, data);
+                    _ = HandleAuthorizeAsync(core, data);
                     return;
 
                 case ActionName.RATE:
-                    _ = HandleRateAsync(sender, data);
+                    _ = HandleRateAsync(core, data);
                     return;
 
                 case ActionName.GET_PURCHASES:
-                    _ = HandleGetPurchasesAsync(sender, data);
+                    _ = HandleGetPurchasesAsync(core, data);
                     return;
 
                 case ActionName.GET_CATALOG:
-                    _ = HandleGetCatalogAsync(sender, data);
+                    _ = HandleGetCatalogAsync(core, data);
                     return;
 
                 case ActionName.PURCHASE:
-                    _ = HandlePurchaseAsync(sender, data);
+                    _ = HandlePurchaseAsync(core, data);
                     return;
 
                 case ActionName.CONSUME_PURCHASE:
-                    _ = HandleConsumePurchaseAsync(sender, data);
+                    _ = HandleConsumePurchaseAsync(core, data);
                     return;
 
                 case ActionName.GET_STORAGE_DATA:
-                    _ = HandleGetStorageDataAsync(sender, data);
+                    _ = HandleGetStorageDataAsync(core, data);
                     return;
 
                 case ActionName.SET_STORAGE_DATA:
-                    _ = HandleSetStorageDataAsync(sender, data);
+                    _ = HandleSetStorageDataAsync(core, data);
                     return;
 
                 case ActionName.DELETE_STORAGE_DATA:
-                    _ = HandleDeleteStorageDataAsync(sender, data);
+                    _ = HandleDeleteStorageDataAsync(core, data);
                     return;
 
                 default:
-                    HandleUnknownAction(sender, action);
+                    HandleUnknownAction(core, action);
                     return;
             }
         }
@@ -215,13 +154,13 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
         private void Reply(CoreWebView2 sender, string payload)
         {
-            if (DispatcherQueue is not null && !DispatcherQueue.HasThreadAccess)
+            if (InvokeRequired)
             {
-                _ = DispatcherQueue.TryEnqueue(() =>
+                BeginInvoke(new Action(() =>
                 {
                     sender.PostWebMessageAsString(payload);
                     AppendLog($"Host → Web: {payload}");
-                });
+                }));
                 return;
             }
 

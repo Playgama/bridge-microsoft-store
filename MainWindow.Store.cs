@@ -165,7 +165,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            if (!DispatcherQueue.TryEnqueue(async () =>
+            Action work = async () =>
             {
                 try
                 {
@@ -257,10 +257,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 {
                     tcs.SetException(ex);
                 }
-            }))
-            {
-                tcs.SetException(new InvalidOperationException("Failed to marshal purchase to UI thread (DispatcherQueue.TryEnqueue returned false)."));
-            }
+            };
+
+            if (InvokeRequired) BeginInvoke(work);
+            else work();
 
             await tcs.Task;
         }

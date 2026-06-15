@@ -3,6 +3,24 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# === Playgama Bridge: local build output & secrets ===
+# Build / publish / packaging output
+build/
+dist/
+dist-store/
+publish_*/
+AppPackages/
+
+# NEVER commit certificates or keys (this repo is PUBLIC). Each builder uses their own.
+*.pfx
+*.snk
+*.p12
+*.cer
+*.crt
+# Everything under signing/ is local-only except the instructions.
+signing/*
+!signing/README.txt
+
 # User-specific files
 *.rsuser
 *.suo
