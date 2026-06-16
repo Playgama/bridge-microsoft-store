@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using Windows.Services.Store;
@@ -109,6 +110,60 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             {
                 AppendLog($"Startup failed: {ex}");
             }
+        }
+
+        private bool _closing;
+
+        // On Alt+F4 / X the form (and WebView2 process) would tear down instantly, dropping
+        // queued analytics/network calls. Defer the close, let the page flush, then exit.
+        protected override async void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (_closing)
+            {
+                base.OnFormClosing(e);
+                return;
+            }
+
+            e.Cancel = true;     // postpone the real close
+            _closing = true;
+
+            try { await FlushBeforeCloseAsync(); }
+            catch (Exception ex) { AppendLog($"Flush on close failed: {ex.Message}"); }
+
+            Close();             // now _closing == true, so it proceeds
+        }
+
+        private async Task FlushBeforeCloseAsync()
+        {
+            var core = GameWebView?.CoreWebView2;
+            if (core is null) return;
+
+            // 1) Fire the page-lifecycle events analytics libraries flush on (sendBeacon/fetch).
+            try
+            {
+                await core.ExecuteScriptAsync(
+                    "try{window.dispatchEvent(new Event('pagehide'));" +
+                    "document.dispatchEvent(new Event('visibilitychange'));" +
+                    "window.dispatchEvent(new Event('beforeunload'));}catch(e){}");
+            }
+            catch { /* page may be busy */ }
+
+            // 2) Navigate to a blank page — a real unload, so the browser runs the page's
+            //    unload handlers and flushes queued beacons/requests.
+            var navigated = new TaskCompletionSource();
+            void OnNav(object? s, CoreWebView2NavigationCompletedEventArgs a)
+            {
+                core.NavigationCompleted -= OnNav;
+                navigated.TrySetResult();
+            }
+            core.NavigationCompleted += OnNav;
+            try { core.Navigate("about:blank"); }
+            catch { navigated.TrySetResult(); }
+
+            await Task.WhenAny(navigated.Task, Task.Delay(2000));
+
+            // 3) Give the network stack a brief moment to actually send the requests.
+            await Task.Delay(700);
         }
     }
 }
