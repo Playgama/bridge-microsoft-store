@@ -20,7 +20,9 @@
 param(
     [string]$Version,
     [ValidateSet('x64', 'arm64', 'both')]
-    [string]$Arch = 'both'
+    [string]$Arch = 'both',
+    # Optional: a publisher name from publishers.json (sets identity + appsettings).
+    [string]$Publisher
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,10 +34,11 @@ function Info($m) { Write-Host "    $m" -ForegroundColor Gray }
 function Ok($m)   { Write-Host "    $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "    $m" -ForegroundColor Yellow }
 
-$project  = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
-$manifest = Join-Path $root 'Package.appxmanifest'
-$outDir   = Join-Path $root 'dist-store'
-$stageDir = Join-Path $root 'build\store-packages'
+$project     = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
+$manifest    = Join-Path $root 'Package.appxmanifest'
+$appSettings = Join-Path $root 'appsettings.json'
+$outDir      = Join-Path $root 'dist-store'
+$stageDir    = Join-Path $root 'build\store-packages'
 
 $arches = if ($Arch -eq 'both') { @('x64', 'arm64') } else { @($Arch) }
 
@@ -55,6 +58,15 @@ function Find-Tool($name) {
     throw "$name not found. Run 'Build MSIX.bat' once so NuGet restores the packaging tools."
 }
 $makeappx = Find-Tool 'makeappx.exe'
+
+# ---- Publisher profile ----------------------------------------------------
+if ($Publisher) {
+    Step "Applying publisher profile: $Publisher"
+    . (Join-Path $root 'tools\publishers.ps1')
+    $pub = Get-PublisherProfile $root $Publisher
+    [void](Set-PublisherInfo $pub $root $manifest $appSettings)
+    Ok "Applied identity + appsettings from publishers.json"
+}
 
 # ---- Identity / version checks --------------------------------------------
 Step "Checking app identity"

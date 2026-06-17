@@ -6,9 +6,21 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        // Use one of the packaged logos as the window / taskbar / Alt-Tab icon.
+        // Use a multi-size favicon.ico if present (best for title bar / taskbar / Alt-Tab),
+        // otherwise fall back to converting one of the PNG logos.
         private void SetWindowIcon()
         {
+            try
+            {
+                var ico = Path.Combine(AppContext.BaseDirectory, "Assets", "favicon.ico");
+                if (File.Exists(ico))
+                {
+                    Icon = new Icon(ico);
+                    return;
+                }
+            }
+            catch { /* fall through to PNG */ }
+
             foreach (var name in new[] { "Square44x44Logo.png", "Square150x150Logo.png", "StoreLogo.png" })
             {
                 try
@@ -17,8 +29,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                     if (!File.Exists(path)) continue;
 
                     using var bmp = new Bitmap(path);
-                    var hIcon = bmp.GetHicon();
-                    Icon = Icon.FromHandle(hIcon);
+                    Icon = Icon.FromHandle(bmp.GetHicon());
                     return;
                 }
                 catch

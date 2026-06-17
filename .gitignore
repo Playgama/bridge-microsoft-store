@@ -11,6 +11,11 @@ dist-store/
 publish_*/
 AppPackages/
 
+# Game build assets (per-game, large, possibly third-party) — keep out of git.
+# NOTE: the app logos in Assets/ root (Square*/Wide*/StoreLogo/SplashScreen) stay tracked;
+# they are required by Package.appxmanifest for the build.
+Assets/game/
+
 # NEVER commit certificates or keys (this repo is PUBLIC). Each builder uses their own.
 *.pfx
 *.snk
@@ -20,6 +25,9 @@ AppPackages/
 # Everything under signing/ is local-only except the instructions.
 signing/*
 !signing/README.txt
+
+# Real publisher config holds cert passwords / identities — keep it local.
+publishers.json
 
 # User-specific files
 *.rsuser

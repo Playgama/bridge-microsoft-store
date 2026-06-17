@@ -17,7 +17,9 @@ param(
     [string]$Arch = 'x64',
     # Optional: use a specific certificate file / password instead of the one in signing\.
     [string]$PfxPath,
-    [string]$PfxPassword
+    [string]$PfxPassword,
+    # Optional: a publisher name from publishers.json (sets identity + cert + appsettings).
+    [string]$Publisher
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,11 +31,12 @@ function Info($msg) { Write-Host "    $msg" -ForegroundColor Gray }
 function Ok($msg)   { Write-Host "    $msg" -ForegroundColor Green }
 
 $rid       = "win-$Arch"
-$project   = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
-$manifest  = Join-Path $root 'Package.appxmanifest'
-$pubDir    = Join-Path $root "build\publish-$Arch"
-$distDir   = Join-Path $root 'dist'
-$certPw    = '11111111'
+$project     = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
+$manifest    = Join-Path $root 'Package.appxmanifest'
+$appSettings = Join-Path $root 'appsettings.json'
+$pubDir      = Join-Path $root "build\publish-$Arch"
+$distDir     = Join-Path $root 'dist'
+$certPw      = '11111111'
 
 Write-Host "Playgama Bridge - MSIX builder ($Arch)" -ForegroundColor White
 
@@ -57,6 +60,17 @@ if (-not $haveSdk) {
     }
 }
 Ok "Using $dotnet"
+
+# ---------------------------------------------------------------- 1b. Publisher profile
+if ($Publisher) {
+    Step "Applying publisher profile: $Publisher"
+    . (Join-Path $root 'tools\publishers.ps1')
+    $pub = Get-PublisherProfile $root $Publisher
+    $info = Set-PublisherInfo $pub $root $manifest $appSettings
+    if (-not $PfxPath -and $info.PfxPath) { $PfxPath = $info.PfxPath }
+    if (-not $PfxPassword -and $info.PfxPassword) { $certPw = $info.PfxPassword; $PfxPassword = $info.PfxPassword }
+    Ok "Applied identity + appsettings from publishers.json"
+}
 
 # ---------------------------------------------------------------- 2. Build / publish
 Step "Building the app (self-contained $Arch)"
