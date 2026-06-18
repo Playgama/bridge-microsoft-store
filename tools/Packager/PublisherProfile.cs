@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Playgama.Packager;
@@ -6,13 +7,10 @@ namespace Playgama.Packager;
 internal sealed class PublisherProfile
 {
     [JsonPropertyName("name")] public string Name { get; set; } = "";
-    [JsonPropertyName("identityName")] public string? IdentityName { get; set; }
     [JsonPropertyName("publisher")] public string? Publisher { get; set; }
     [JsonPropertyName("publisherDisplayName")] public string? PublisherDisplayName { get; set; }
     [JsonPropertyName("pfx")] public string? Pfx { get; set; }
     [JsonPropertyName("pfxPassword")] public string? PfxPassword { get; set; }
-    [JsonPropertyName("clientId")] public string? ClientId { get; set; }
-    [JsonPropertyName("serviceTicketBaseUrl")] public string? ServiceTicketBaseUrl { get; set; }
 
     public override string ToString() => string.IsNullOrWhiteSpace(Name) ? "(unnamed)" : Name;
 }
@@ -33,5 +31,33 @@ internal static class PublisherStore
     public static void Save(string root, List<PublisherProfile> list)
     {
         File.WriteAllText(PathFor(root), JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+    }
+}
+
+// Tiny per-user settings (e.g. last selected publisher), stored in LocalAppData — never in the repo.
+internal static class LocalSettings
+{
+    private static string FilePath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PlaygamaPackager", "settings.json");
+
+    public static string GetLastPublisher()
+    {
+        try
+        {
+            if (File.Exists(FilePath) && JsonNode.Parse(File.ReadAllText(FilePath)) is JsonObject o)
+                return (string?)o["lastPublisher"] ?? "";
+        }
+        catch { }
+        return "";
+    }
+
+    public static void SetLastPublisher(string name)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+            File.WriteAllText(FilePath, new JsonObject { ["lastPublisher"] = name }.ToJsonString());
+        }
+        catch { }
     }
 }

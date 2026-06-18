@@ -9,8 +9,7 @@ internal sealed class PublishersDialog : Form
     private bool _loading;
 
     private ListBox _lst = null!;
-    private TextBox _name = null!, _idName = null!, _publisher = null!, _pubDisplay = null!;
-    private TextBox _clientId = null!, _serviceUrl = null!, _pfx = null!, _pfxPw = null!;
+    private TextBox _name = null!, _publisher = null!, _pubDisplay = null!, _pfx = null!, _pfxPw = null!;
 
     public PublishersDialog(string root)
     {
@@ -18,9 +17,9 @@ internal sealed class PublishersDialog : Form
         _list = PublisherStore.Load(root);
 
         Text = "Manage publishers";
-        Width = 760;
-        Height = 470;
-        MinimumSize = new Size(680, 420);
+        Width = 720;
+        Height = 380;
+        MinimumSize = new Size(640, 340);
         StartPosition = FormStartPosition.CenterParent;
         Font = new Font("Segoe UI", 9f);
 
@@ -30,17 +29,15 @@ internal sealed class PublishersDialog : Form
 
     private void BuildUi()
     {
-        // Bottom: Save / Cancel
         var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.RightToLeft, AutoSize = true, Padding = new Padding(8) };
         var btnSave = new Button { Text = "Save", AutoSize = true, Padding = new Padding(14, 4, 14, 4) };
         var btnCancel = new Button { Text = "Cancel", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Margin = new Padding(8, 0, 0, 0) };
-        btnSave.Click += (_, _) => { CommitCurrent(); PublisherStore.Save(_root, _list); DialogResult = DialogResult.OK; Close(); };
+        btnSave.Click += (_, _) => { PublisherStore.Save(_root, _list); DialogResult = DialogResult.OK; Close(); };
         btnCancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
         bottom.Controls.Add(btnSave);
         bottom.Controls.Add(btnCancel);
         Controls.Add(bottom);
 
-        // Left: list + Add/Remove
         var left = new Panel { Dock = DockStyle.Left, Width = 220, Padding = new Padding(8) };
         _lst = new ListBox { Dock = DockStyle.Fill };
         _lst.SelectedIndexChanged += (_, _) => LoadSelected();
@@ -55,26 +52,19 @@ internal sealed class PublishersDialog : Form
         left.Controls.Add(leftButtons);
         Controls.Add(left);
 
-        // Right: fields
-        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10), AutoSize = false };
+        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10) };
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _name = AddField(grid, "Profile name");
-        _idName = AddField(grid, "Identity Name");
         _publisher = AddField(grid, "Publisher (CN=…)");
         _pubDisplay = AddField(grid, "Publisher display name");
-        _clientId = AddField(grid, "clientId");
-        _serviceUrl = AddField(grid, "serviceTicketBaseUrl");
         _pfx = AddFieldWithBrowse(grid, "Certificate (.pfx)");
         _pfxPw = AddField(grid, "Certificate password");
 
-        _name.TextChanged += (_, _) => { if (!_loading && _current != null) { _current.Name = _name.Text; RefreshListText(); } };
-        _idName.TextChanged += (_, _) => Set(p => p.IdentityName = _idName.Text);
+        _name.TextChanged += (_, _) => { if (!_loading && _current != null) { _current.Name = _name.Text; _lst.Invalidate(); } };
         _publisher.TextChanged += (_, _) => Set(p => p.Publisher = _publisher.Text);
         _pubDisplay.TextChanged += (_, _) => Set(p => p.PublisherDisplayName = _pubDisplay.Text);
-        _clientId.TextChanged += (_, _) => Set(p => p.ClientId = _clientId.Text);
-        _serviceUrl.TextChanged += (_, _) => Set(p => p.ServiceTicketBaseUrl = _serviceUrl.Text);
         _pfx.TextChanged += (_, _) => Set(p => p.Pfx = _pfx.Text);
         _pfxPw.TextChanged += (_, _) => Set(p => p.PfxPassword = _pfxPw.Text);
 
@@ -112,7 +102,6 @@ internal sealed class PublishersDialog : Form
             using var dlg = new OpenFileDialog { Filter = "Certificate (*.pfx)|*.pfx|All files|*.*" };
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                // Store relative to the repo root if the cert lives under it (e.g. signing\...).
                 var full = dlg.FileName;
                 box.Text = full.StartsWith(_root, StringComparison.OrdinalIgnoreCase)
                     ? Path.GetRelativePath(_root, full)
@@ -134,38 +123,26 @@ internal sealed class PublishersDialog : Form
         else LoadSelected();
     }
 
-    private void RefreshListText()
-    {
-        int i = _lst.SelectedIndex;
-        if (i >= 0) { _lst.Items[i] = _lst.Items[i]; _lst.Refresh(); }
-    }
-
     private void LoadSelected()
     {
-        CommitCurrent();
         _current = _lst.SelectedItem as PublisherProfile;
 
         _loading = true;
         _name.Text = _current?.Name ?? "";
-        _idName.Text = _current?.IdentityName ?? "";
         _publisher.Text = _current?.Publisher ?? "";
         _pubDisplay.Text = _current?.PublisherDisplayName ?? "";
-        _clientId.Text = _current?.ClientId ?? "";
-        _serviceUrl.Text = _current?.ServiceTicketBaseUrl ?? "";
         _pfx.Text = _current?.Pfx ?? "";
         _pfxPw.Text = _current?.PfxPassword ?? "";
         _loading = false;
 
         bool enabled = _current != null;
-        foreach (var c in new Control[] { _name, _idName, _publisher, _pubDisplay, _clientId, _serviceUrl, _pfx, _pfxPw })
+        foreach (var c in new Control[] { _name, _publisher, _pubDisplay, _pfx, _pfxPw })
             c.Enabled = enabled;
     }
 
-    private void CommitCurrent() { /* fields write through live; nothing extra needed */ }
-
     private void AddProfile()
     {
-        var p = new PublisherProfile { Name = "New publisher", PfxPassword = "11111111", ServiceTicketBaseUrl = "https://playgama.com" };
+        var p = new PublisherProfile { Name = "New publisher", PfxPassword = "11111111" };
         _list.Add(p);
         _lst.Items.Add(p);
         _lst.SelectedItem = p;

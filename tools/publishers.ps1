@@ -1,4 +1,4 @@
-# Shared helpers for reading publishers.json and applying a profile to the manifest/appsettings.
+# Shared helpers for reading publishers.json and applying a profile to the manifest.
 
 function Get-PublisherProfile([string]$root, [string]$name) {
     $file = Join-Path $root 'publishers.json'
@@ -11,20 +11,13 @@ function Get-PublisherProfile([string]$root, [string]$name) {
     return $p
 }
 
-# Writes Identity (Name/Publisher) + PublisherDisplayName into the manifest, and clientId /
-# serviceTicketBaseUrl into appsettings.json. Returns the resolved pfx info via the pipeline.
-function Set-PublisherInfo([object]$p, [string]$root, [string]$manifestPath, [string]$appSettingsPath) {
+# Writes Publisher (CN=) + PublisherDisplayName into the manifest (Identity Name stays per-game).
+# Returns the resolved pfx path + password to sign with.
+function Set-PublisherInfo([object]$p, [string]$root, [string]$manifestPath) {
     [xml]$m = Get-Content $manifestPath
-    if ($p.identityName) { $m.Package.Identity.Name = [string]$p.identityName }
     if ($p.publisher) { $m.Package.Identity.Publisher = [string]$p.publisher }
     if ($p.publisherDisplayName) { $m.Package.Properties.PublisherDisplayName = [string]$p.publisherDisplayName }
     $m.Save($manifestPath)
-
-    if ($appSettingsPath) {
-        $url = if ($p.serviceTicketBaseUrl) { [string]$p.serviceTicketBaseUrl } else { 'https://playgama.com' }
-        $cfg = [ordered]@{ clientId = [string]$p.clientId; serviceTicketBaseUrl = $url }
-        ($cfg | ConvertTo-Json) | Set-Content -Path $appSettingsPath -Encoding UTF8
-    }
 
     $pfxPath = $null
     if ($p.pfx) {

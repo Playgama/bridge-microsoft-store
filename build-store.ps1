@@ -36,7 +36,6 @@ function Warn($m) { Write-Host "    $m" -ForegroundColor Yellow }
 
 $project     = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
 $manifest    = Join-Path $root 'Package.appxmanifest'
-$appSettings = Join-Path $root 'appsettings.json'
 $outDir      = Join-Path $root 'dist-store'
 $stageDir    = Join-Path $root 'build\store-packages'
 
@@ -64,8 +63,8 @@ if ($Publisher) {
     Step "Applying publisher profile: $Publisher"
     . (Join-Path $root 'tools\publishers.ps1')
     $pub = Get-PublisherProfile $root $Publisher
-    [void](Set-PublisherInfo $pub $root $manifest $appSettings)
-    Ok "Applied identity + appsettings from publishers.json"
+    [void](Set-PublisherInfo $pub $root $manifest)
+    Ok "Applied publisher identity from publishers.json"
 }
 
 # ---- Identity / version checks --------------------------------------------

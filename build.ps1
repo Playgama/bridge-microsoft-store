@@ -33,7 +33,6 @@ function Ok($msg)   { Write-Host "    $msg" -ForegroundColor Green }
 $rid       = "win-$Arch"
 $project     = Join-Path $root 'PlaygamaBridgeMicrosoftStore.csproj'
 $manifest    = Join-Path $root 'Package.appxmanifest'
-$appSettings = Join-Path $root 'appsettings.json'
 $pubDir      = Join-Path $root "build\publish-$Arch"
 $distDir     = Join-Path $root 'dist'
 $certPw      = '11111111'
@@ -66,10 +65,10 @@ if ($Publisher) {
     Step "Applying publisher profile: $Publisher"
     . (Join-Path $root 'tools\publishers.ps1')
     $pub = Get-PublisherProfile $root $Publisher
-    $info = Set-PublisherInfo $pub $root $manifest $appSettings
+    $info = Set-PublisherInfo $pub $root $manifest
     if (-not $PfxPath -and $info.PfxPath) { $PfxPath = $info.PfxPath }
     if (-not $PfxPassword -and $info.PfxPassword) { $certPw = $info.PfxPassword; $PfxPassword = $info.PfxPassword }
-    Ok "Applied identity + appsettings from publishers.json"
+    Ok "Applied publisher identity from publishers.json"
 }
 
 # ---------------------------------------------------------------- 2. Build / publish
