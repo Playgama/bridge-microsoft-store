@@ -454,18 +454,24 @@ public sealed class MainForm : Form
     }
 
     // ---- logo generation -------------------------------------------------
+    // Match the Visual Studio asset generator: unqualified (scale-100) + scale-200 for each logo,
+    // and include the SmallTile (71x71) / LargeTile (310x310) the App Installer & tiles use.
+    private static readonly int[] Scales = { 200 };
+
     private static void GenerateLogos(string srcPng, string assetsDir)
     {
         using var src = new Bitmap(srcPng);
 
         SaveSquareScaled(src, assetsDir, "Square44x44Logo", 44);
+        SaveSquareScaled(src, assetsDir, "SmallTile", 71);          // Square71x71Logo
         SaveSquareScaled(src, assetsDir, "Square150x150Logo", 150);
+        SaveSquareScaled(src, assetsDir, "LargeTile", 310);         // Square310x310Logo
         SaveSquareScaled(src, assetsDir, "StoreLogo", 50);
         SaveCanvasScaled(src, assetsDir, "Wide310x150Logo", 310, 150);
         SaveCanvasScaled(src, assetsDir, "SplashScreen", 620, 300);
         SaveSquareScaled(src, assetsDir, "LockScreenLogo", 24);
 
-        foreach (var s in new[] { 16, 24, 32, 48, 256 })
+        foreach (var s in new[] { 16, 24, 32, 44, 48, 256 })
         {
             SaveSquare(src, Path.Combine(assetsDir, $"Square44x44Logo.targetsize-{s}.png"), s);
             SaveSquare(src, Path.Combine(assetsDir, $"Square44x44Logo.targetsize-{s}_altform-unplated.png"), s);
@@ -474,16 +480,19 @@ public sealed class MainForm : Form
         WriteIco(Path.Combine(assetsDir, "favicon.ico"), src, new[] { 16, 32, 48, 256 });
     }
 
-    private static void SaveSquareScaled(Bitmap src, string dir, string baseName, int size)
+    // Emit only scale-qualified files (no unqualified scale-100 base), like the VS generator.
+    // build.ps1 makepri uses scale-200 as the default qualifier, so these resolve everywhere
+    // (and the App Installer / tiles render full-size instead of falling back to a small base).
+    private static void SaveSquareScaled(Bitmap src, string dir, string baseName, int baseSize)
     {
-        SaveSquare(src, Path.Combine(dir, baseName + ".png"), size);
-        SaveSquare(src, Path.Combine(dir, baseName + ".scale-200.png"), size * 2);
+        foreach (var s in Scales)
+            SaveSquare(src, Path.Combine(dir, $"{baseName}.scale-{s}.png"), (int)Math.Round(baseSize * s / 100.0));
     }
 
     private static void SaveCanvasScaled(Bitmap src, string dir, string baseName, int w, int h)
     {
-        SaveCanvas(src, Path.Combine(dir, baseName + ".png"), w, h);
-        SaveCanvas(src, Path.Combine(dir, baseName + ".scale-200.png"), w * 2, h * 2);
+        foreach (var s in Scales)
+            SaveCanvas(src, Path.Combine(dir, $"{baseName}.scale-{s}.png"), (int)Math.Round(w * s / 100.0), (int)Math.Round(h * s / 100.0));
     }
 
     private static void WriteIco(string path, Bitmap src, int[] sizes)
@@ -524,7 +533,13 @@ public sealed class MainForm : Form
     {
         using var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using (var g = NewGraphics(bmp))
-            g.DrawImage(src, new Rectangle(0, 0, size, size));
+        {
+            // Center-crop the source to a square so non-square images aren't distorted.
+            int side = Math.Min(src.Width, src.Height);
+            int sx = (src.Width - side) / 2;
+            int sy = (src.Height - side) / 2;
+            g.DrawImage(src, new Rectangle(0, 0, size, size), new Rectangle(sx, sy, side, side), GraphicsUnit.Pixel);
+        }
         bmp.Save(path, ImageFormat.Png);
     }
 

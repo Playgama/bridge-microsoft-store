@@ -57,6 +57,7 @@ function Find-Tool($name) {
     throw "$name not found. Run 'Build MSIX.bat' once so NuGet restores the packaging tools."
 }
 $makeappx = Find-Tool 'makeappx.exe'
+$makepri  = Find-Tool 'makepri.exe'
 
 # ---- Publisher profile ----------------------------------------------------
 if ($Publisher) {
@@ -106,6 +107,12 @@ foreach ($a in $arches) {
     $mm.Package.Identity.SetAttribute('ProcessorArchitecture', $a)
     $mm.Package.Identity.Version = $Version
     $mm.Save((Join-Path $pub 'AppxManifest.xml'))
+
+    # resources.pri so scale/targetsize icon variants resolve (otherwise icons look tiny).
+    $priConfig = Join-Path $env:TEMP "playgama-priconfig-$a.xml"
+    & $makepri createconfig /cf $priConfig /dq lang-en-US_scale-200 /o | Out-Null
+    & $makepri new /pr $pub /cf $priConfig /mn (Join-Path $pub 'AppxManifest.xml') /of (Join-Path $pub 'resources.pri') /o | Out-Null
+    if (-not (Test-Path (Join-Path $pub 'resources.pri'))) { throw "Failed to generate resources.pri for $a." }
 
     $pkg = Join-Path $stageDir "PlaygamaBridge_$a.msix"
     & $makeappx pack /d $pub /p $pkg /o

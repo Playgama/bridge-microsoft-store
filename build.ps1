@@ -92,8 +92,9 @@ function Find-Tool($name) {
 }
 $makeappx = Find-Tool 'makeappx.exe'
 $signtool = Find-Tool 'signtool.exe'
-if (-not $makeappx -or -not $signtool) {
-    throw "Could not find makeappx.exe/signtool.exe. Run the build once more (NuGet restore provides them), or install the Windows 10/11 SDK."
+$makepri  = Find-Tool 'makepri.exe'
+if (-not $makeappx -or -not $signtool -or -not $makepri) {
+    throw "Could not find makeappx/signtool/makepri. Run the build once more (NuGet restore provides them), or install the Windows 10/11 SDK."
 }
 Ok "makeappx: $makeappx"
 
@@ -162,6 +163,19 @@ $xml.Package.Identity.Version = $newVer
 $xml.Save($manifest)                                   # persist the bump
 Copy-Item $manifest (Join-Path $pubDir 'AppxManifest.xml') -Force
 Ok "Version $newVer"
+
+# ---------------------------------------------------------------- 5b. Resource index (icons)
+# Without resources.pri Windows can't resolve scale-200 / targetsize icon variants and falls
+# back to the small 44px base logo (icons look tiny). makepri builds that index.
+Step "Indexing resources (resources.pri)"
+# Default qualifier includes scale-200 so a scale-200-only asset set is valid as the default
+# (no scale-100 base needed) — this is what makes the icon render full-size, like VS does.
+$priConfig = Join-Path $env:TEMP 'playgama-priconfig.xml'
+& $makepri createconfig /cf $priConfig /dq lang-en-US_scale-200 /o | Out-Null
+$priOut = Join-Path $pubDir 'resources.pri'
+& $makepri new /pr $pubDir /cf $priConfig /mn (Join-Path $pubDir 'AppxManifest.xml') /of $priOut /o | Out-Null
+if (-not (Test-Path $priOut)) { throw "Failed to generate resources.pri (makepri)." }
+Ok "resources.pri created"
 
 # ---------------------------------------------------------------- 6. Pack + sign
 Step "Packaging and signing"
