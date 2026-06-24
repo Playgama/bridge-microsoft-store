@@ -1,29 +1,41 @@
-using Microsoft.UI;
-using Microsoft.UI.Windowing;
-using Windows.UI;
+using System;
+using System.Drawing;
+using System.IO;
+
 namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private void SetWindowIcon(string iconPath)
+        // Use a multi-size favicon.ico if present (best for title bar / taskbar / Alt-Tab),
+        // otherwise fall back to converting one of the PNG logos.
+        private void SetWindowIcon()
         {
-            var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
-            var appWindow = AppWindow.GetFromWindowId(windowId);
-
-            appWindow.SetIcon(iconPath);
-
-            if (appWindow.TitleBar is not null)
+            try
             {
-                appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
+                var ico = Path.Combine(AppContext.BaseDirectory, "Assets", "favicon.ico");
+                if (File.Exists(ico))
+                {
+                    Icon = new Icon(ico);
+                    return;
+                }
+            }
+            catch { /* fall through to PNG */ }
 
-                appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-                appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            foreach (var name in new[] { "Square44x44Logo.png", "Square150x150Logo.png", "StoreLogo.png" })
+            {
+                try
+                {
+                    var path = Path.Combine(AppContext.BaseDirectory, "Assets", name);
+                    if (!File.Exists(path)) continue;
 
-                appWindow.TitleBar.ButtonForegroundColor = Colors.White;
-                appWindow.TitleBar.ButtonInactiveForegroundColor = Colors.LightGray;
-
-                appWindow.TitleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF);
-                appWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF);
+                    using var bmp = new Bitmap(path);
+                    Icon = Icon.FromHandle(bmp.GetHicon());
+                    return;
+                }
+                catch
+                {
+                    // try the next candidate; fall back to the default icon
+                }
             }
         }
     }

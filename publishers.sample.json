@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Playgama (account 1)",
+    "publisher": "CN=REPLACE-WITH-PUBLISHER-GUID-1",
+    "publisherDisplayName": "Playgama",
+    "pfx": "signing/account1.pfx",
+    "pfxPassword": "11111111"
+  },
+  {
+    "name": "Playgama (account 2)",
+    "publisher": "CN=REPLACE-WITH-PUBLISHER-GUID-2",
+    "publisherDisplayName": "Playgama",
+    "pfx": "signing/account2.pfx",
+    "pfxPassword": "11111111"
+  }
+]

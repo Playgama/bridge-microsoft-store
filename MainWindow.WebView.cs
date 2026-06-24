@@ -1,4 +1,4 @@
-﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
@@ -15,10 +15,13 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             await GameWebView.EnsureCoreWebView2Async();
 
-            GameWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+            var web = GameWebView.CoreWebView2;
 
-            GameWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            web.Settings.AreDefaultScriptDialogsEnabled = false;
 
+            web.WebMessageReceived += CoreWebView2_WebMessageReceived;
+
+            // Hide navigator.mediaDevices so games don't prompt for camera/mic permissions.
             var permissionProbeScript = @"
             (function   () {
                 try {
@@ -32,11 +35,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 }
             })();";
 
-            await GameWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(permissionProbeScript);
+            await web.AddScriptToExecuteOnDocumentCreatedAsync(permissionProbeScript);
 
             var htmlPath = Path.Combine(AppContext.BaseDirectory, "Assets", "game");
 
-            GameWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            web.SetVirtualHostNameToFolderMapping(
                 AppAssetsHost,
                 htmlPath,
                 CoreWebView2HostResourceAccessKind.Allow);
@@ -48,8 +51,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             _ = IncrementLaunchCount();
         }
 
-        private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+        private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
+            var core = GameWebView.CoreWebView2;
+
             var msg = args.TryGetWebMessageAsString();
             AppendLog($"Web → Host: {msg}");
 
@@ -71,54 +76,50 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             if (string.IsNullOrWhiteSpace(action))
             {
-                Reply(sender, $"Host received: {msg}");
+                Reply(core, $"Host received: {msg}");
                 return;
             }
 
             switch (action)
             {
                 case ActionName.INITIALIZE:
-                    HandleInitialize(sender, data);
-                    return;
-
-                case ActionName.AUTHORIZE_PLAYER:
-                    _ = HandleAuthorizeAsync(sender, data);
+                    HandleInitialize(core, data);
                     return;
 
                 case ActionName.RATE:
-                    _ = HandleRateAsync(sender, data);
+                    _ = HandleRateAsync(core, data);
                     return;
 
                 case ActionName.GET_PURCHASES:
-                    _ = HandleGetPurchasesAsync(sender, data);
+                    _ = HandleGetPurchasesAsync(core, data);
                     return;
 
                 case ActionName.GET_CATALOG:
-                    _ = HandleGetCatalogAsync(sender, data);
+                    _ = HandleGetCatalogAsync(core, data);
                     return;
 
                 case ActionName.PURCHASE:
-                    _ = HandlePurchaseAsync(sender, data);
+                    _ = HandlePurchaseAsync(core, data);
                     return;
 
                 case ActionName.CONSUME_PURCHASE:
-                    _ = HandleConsumePurchaseAsync(sender, data);
+                    _ = HandleConsumePurchaseAsync(core, data);
                     return;
 
                 case ActionName.GET_STORAGE_DATA:
-                    _ = HandleGetStorageDataAsync(sender, data);
+                    _ = HandleGetStorageDataAsync(core, data);
                     return;
 
                 case ActionName.SET_STORAGE_DATA:
-                    _ = HandleSetStorageDataAsync(sender, data);
+                    _ = HandleSetStorageDataAsync(core, data);
                     return;
 
                 case ActionName.DELETE_STORAGE_DATA:
-                    _ = HandleDeleteStorageDataAsync(sender, data);
+                    _ = HandleDeleteStorageDataAsync(core, data);
                     return;
 
                 default:
-                    HandleUnknownAction(sender, action);
+                    HandleUnknownAction(core, action);
                     return;
             }
         }
@@ -149,13 +150,13 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
         private void Reply(CoreWebView2 sender, string payload)
         {
-            if (DispatcherQueue is not null && !DispatcherQueue.HasThreadAccess)
+            if (InvokeRequired)
             {
-                _ = DispatcherQueue.TryEnqueue(() =>
+                BeginInvoke(new Action(() =>
                 {
                     sender.PostWebMessageAsString(payload);
                     AppendLog($"Host → Web: {payload}");
-                });
+                }));
                 return;
             }
 

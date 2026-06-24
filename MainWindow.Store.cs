@@ -1,24 +1,14 @@
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 using Windows.Services.Store;
-using Windows.Storage;
 
 namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private static readonly HttpClient Http = new();
-
-        private const string PublisherUserFileName = "publisherUser.json";
-
         private static string[] ExtractStoreIdsFromData(JToken? data)
         {
             if (data is not JArray arr)
@@ -165,7 +155,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            if (!DispatcherQueue.TryEnqueue(async () =>
+            Action work = async () =>
             {
                 try
                 {
@@ -203,35 +193,6 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                                 : purchaseResult.ExtendedError.ToString(),
                         };
 
-                        if (isSuccess)
-                        {
-                            try
-                            {
-                                var publisherUserId = await GetOrCreatePublisherUserIdAsync().ConfigureAwait(true);
-
-                                var config = GetConfiguration();
-                                var clientId = config.ClientId;
-
-                                responseData["clientId"] = clientId;
-
-                                var serviceTicket = await GetServiceTicketAsync(clientId).ConfigureAwait(true);
-
-                                if (!string.IsNullOrWhiteSpace(serviceTicket))
-                                {
-                                    var customerCollectionsId = await _store.GetCustomerCollectionsIdAsync(serviceTicket, publisherUserId);
-                                    responseData["customerCollectionsId"] = customerCollectionsId;
-                                }
-                                else
-                                {
-                                    responseData["customerCollectionsId"] = null;
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                responseData["serviceTicketError"] = ex.Message;
-                            }
-                        }
-
                         Reply(sender, new JObject
                         {
                             ["action"] = ActionName.PURCHASE,
@@ -257,69 +218,12 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 {
                     tcs.SetException(ex);
                 }
-            }))
-            {
-                tcs.SetException(new InvalidOperationException("Failed to marshal purchase to UI thread (DispatcherQueue.TryEnqueue returned false)."));
-            }
-
-            await tcs.Task;
-        }
-
-        private static async Task<string> GetOrCreatePublisherUserIdAsync()
-        {
-            var folder = ApplicationData.Current.LocalFolder;
-            var path = Path.Combine(folder.Path, PublisherUserFileName);
-
-            JObject root;
-
-            if (File.Exists(path))
-            {
-                var text = await File.ReadAllTextAsync(path).ConfigureAwait(false);
-                root = string.IsNullOrWhiteSpace(text) ? new JObject() : JObject.Parse(text);
-            }
-            else
-            {
-                root = new JObject();
-            }
-
-            var publisherUserId = (string?)root["publisherUserId"];
-
-            if (string.IsNullOrWhiteSpace(publisherUserId))
-            {
-                publisherUserId = Guid.NewGuid().ToString("N");
-                root["publisherUserId"] = publisherUserId;
-
-                var json = root.ToString(Newtonsoft.Json.Formatting.Indented);
-                await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
-            }
-
-            return publisherUserId;
-        }
-
-        private static async Task<string?> GetServiceTicketAsync(string clientId)
-        {
-            var payload = new JObject
-            {
-                ["clientId"] = clientId,
-            }.ToString(Newtonsoft.Json.Formatting.None);
-
-            var endpoint = GetConfiguration().ServiceTicketEndpoint;
-
-            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(payload, Encoding.UTF8, "application/json")
             };
 
-            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (InvokeRequired) BeginInvoke(work);
+            else work();
 
-            using var resp = await Http.SendAsync(req).ConfigureAwait(false);
-            var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-            if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException($"Service-ticket HTTP {(int)resp.StatusCode}: {body}");
-
-            var json = JObject.Parse(body);
-            return (string?)json["serviceTicket"];
+            await tcs.Task;
         }
 
         private async Task HandleConsumePurchaseAsync(CoreWebView2 sender, JToken? data)

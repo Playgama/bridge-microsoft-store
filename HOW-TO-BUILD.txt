@@ -1,0 +1,75 @@
+============================================================
+ Playgama Bridge — How to build the game package (MSIX)
+============================================================
+
+You do NOT need any programming knowledge or Visual Studio.
+You only need a Windows 10/11 PC with an internet connection
+(the first build downloads what it needs automatically).
+
+
+STEP 1 — Put the game in
+------------------------------------------------------------
+Replace the contents of the folder:
+
+    Assets\game\
+
+with your Unity WebGL build (the folder that contains
+index.html, the Build\ folder, etc.).
+Keep the folder name "game".
+
+
+STEP 2 — Build
+------------------------------------------------------------
+Double-click:
+
+    Build MSIX.bat
+
+A window opens and does everything automatically:
+  - installs the .NET 8 SDK if it's missing,
+  - builds the app,
+  - creates a signing certificate,
+  - produces a signed, installable package.
+
+When it finishes, the package is here:
+
+    dist\PlaygamaBridgeMicrosoftStore_<version>_x64.msix
+
+(First build takes a few minutes; later builds take ~30 seconds.)
+
+
+STEP 3 — Test it on this PC (optional)
+------------------------------------------------------------
+Double-click:
+
+    Install for testing.bat
+
+Click "Yes" on the administrator prompt. It installs the app;
+then launch "PlaygamaBridgeMicrosoftStore" from the Start menu.
+
+
+Build for ARM64 PCs (optional)
+------------------------------------------------------------
+Right-click "Build MSIX.bat" is not needed; instead open the
+folder, hold Shift + right-click, "Open PowerShell window here",
+and run:
+
+    powershell -ExecutionPolicy Bypass -File build.ps1 -Arch arm64
+
+
+Uploading to the Microsoft Store
+------------------------------------------------------------
+The .msix in "dist" is fine for sharing/testing. For the Store,
+upload the .msix in Partner Center — the Store signs it itself,
+so the local certificate is not used there. The package Identity
+(Name/Publisher) in Package.appxmanifest must match your app's
+identity in Partner Center.
+
+
+Troubleshooting
+------------------------------------------------------------
+- "Windows protected your PC" when running the .bat: click
+  "More info" > "Run anyway".
+- If the build can't find tools the very first time, just run
+  "Build MSIX.bat" once more.
+- Antivirus may flag makeappx/signtool briefly; allow them.
+============================================================

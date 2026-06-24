@@ -1,9 +1,8 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Windows.ApplicationModel;
 using Windows.Services.Store;
 using Windows.Storage;
@@ -50,11 +49,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             return launchCount >= MinLaunchCountToPrompt;
         }
 
-        private async Task ShowRatePromptAsync(XamlRoot xamlRoot, int launchCount)
+        private async Task ShowRatePromptAsync(int launchCount)
         {
             var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            if (!DispatcherQueue.TryEnqueue(async () =>
+            Action work = async () =>
             {
                 try
                 {
@@ -62,19 +61,16 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
                     var pkg = Package.Current;
 
-                    var dialog = new ContentDialog
-                    {
-                        Title = "Do you like the game?",
-                        PrimaryButtonText = "😍",
-                        CloseButtonText = "😒",
-                        XamlRoot = xamlRoot
-                    };
+                    var dialogResult = MessageBox.Show(
+                        this,
+                        "Do you like the game?",
+                        "Rate",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
 
-                    var dialogResult = await dialog.ShowAsync();
-
-                    if (dialogResult != ContentDialogResult.Primary)
+                    if (dialogResult != DialogResult.Yes)
                     {
-                        tcs.SetResult();
+                        tcs.TrySetResult();
                         return;
                     }
 
@@ -83,21 +79,21 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                     {
                         AppendLog($"Skip RequestRateAndReviewAppAsync (SignatureKind={pkg.SignatureKind}). Using Store URI fallback.");
                         await LaunchStoreReviewFallbackAsync();
-                        tcs.SetResult();
+                        tcs.TrySetResult();
                         return;
                     }
 
                     await _store.RequestRateAndReviewAppAsync();
-                    tcs.SetResult();
+                    tcs.TrySetResult();
                 }
                 catch (Exception ex)
                 {
-                    tcs.SetException(ex);
+                    tcs.TrySetException(ex);
                 }
-            }))
-            {
-                tcs.SetException(new InvalidOperationException("Failed to show rate prompt dialog (DispatcherQueue.TryEnqueue returned false)."));
-            }
+            };
+
+            if (InvokeRequired) BeginInvoke(work);
+            else work();
 
             await tcs.Task;
         }
@@ -124,7 +120,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             if (IsEligibleToShowRateDialog(launchCount))
             {
-                await ShowRatePromptAsync(GameWebView.XamlRoot, launchCount);
+                await ShowRatePromptAsync(launchCount);
             }
 
             Reply(sender, new JObject
