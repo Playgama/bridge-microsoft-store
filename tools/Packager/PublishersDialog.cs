@@ -10,6 +10,7 @@ internal sealed class PublishersDialog : Form
 
     private ListBox _lst = null!;
     private TextBox _name = null!, _publisher = null!, _pubDisplay = null!, _pfx = null!, _pfxPw = null!;
+    private TextBox _clientId = null!, _serviceUrl = null!;
 
     public PublishersDialog(string root)
     {
@@ -18,8 +19,8 @@ internal sealed class PublishersDialog : Form
 
         Text = "Manage publishers";
         Width = 720;
-        Height = 380;
-        MinimumSize = new Size(640, 340);
+        Height = 460;
+        MinimumSize = new Size(640, 420);
         StartPosition = FormStartPosition.CenterParent;
         Font = new Font("Segoe UI", 9f);
 
@@ -61,12 +62,16 @@ internal sealed class PublishersDialog : Form
         _pubDisplay = AddField(grid, "Publisher display name");
         _pfx = AddFieldWithBrowse(grid, "Certificate (.pfx)");
         _pfxPw = AddField(grid, "Certificate password");
+        _clientId = AddField(grid, "Client ID (Azure AD)");
+        _serviceUrl = AddField(grid, "Service ticket URL");
 
         _name.TextChanged += (_, _) => { if (!_loading && _current != null) { _current.Name = _name.Text; _lst.Invalidate(); } };
         _publisher.TextChanged += (_, _) => Set(p => p.Publisher = _publisher.Text);
         _pubDisplay.TextChanged += (_, _) => Set(p => p.PublisherDisplayName = _pubDisplay.Text);
         _pfx.TextChanged += (_, _) => Set(p => p.Pfx = _pfx.Text);
         _pfxPw.TextChanged += (_, _) => Set(p => p.PfxPassword = _pfxPw.Text);
+        _clientId.TextChanged += (_, _) => Set(p => p.ClientId = _clientId.Text);
+        _serviceUrl.TextChanged += (_, _) => Set(p => p.ServiceTicketBaseUrl = _serviceUrl.Text);
 
         var rightHost = new Panel { Dock = DockStyle.Fill };
         rightHost.Controls.Add(grid);
@@ -133,16 +138,18 @@ internal sealed class PublishersDialog : Form
         _pubDisplay.Text = _current?.PublisherDisplayName ?? "";
         _pfx.Text = _current?.Pfx ?? "";
         _pfxPw.Text = _current?.PfxPassword ?? "";
+        _clientId.Text = _current?.ClientId ?? "";
+        _serviceUrl.Text = _current?.ServiceTicketBaseUrl ?? "";
         _loading = false;
 
         bool enabled = _current != null;
-        foreach (var c in new Control[] { _name, _publisher, _pubDisplay, _pfx, _pfxPw })
+        foreach (var c in new Control[] { _name, _publisher, _pubDisplay, _pfx, _pfxPw, _clientId, _serviceUrl })
             c.Enabled = enabled;
     }
 
     private void AddProfile()
     {
-        var p = new PublisherProfile { Name = "New publisher", PfxPassword = "11111111" };
+        var p = new PublisherProfile { Name = "New publisher", PfxPassword = "11111111", ServiceTicketBaseUrl = "https://playgama.com" };
         _list.Add(p);
         _lst.Items.Add(p);
         _lst.SelectedItem = p;

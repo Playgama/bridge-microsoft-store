@@ -65,7 +65,7 @@ if ($Publisher) {
     Step "Applying publisher profile: $Publisher"
     . (Join-Path $root 'tools\publishers.ps1')
     $pub = Get-PublisherProfile $root $Publisher
-    $info = Set-PublisherInfo $pub $root $manifest
+    $info = Set-PublisherInfo $pub $root $manifest (Join-Path $root 'appsettings.json')
     if (-not $PfxPath -and $info.PfxPath) { $PfxPath = $info.PfxPath }
     if (-not $PfxPassword -and $info.PfxPassword) { $certPw = $info.PfxPassword; $PfxPassword = $info.PfxPassword }
     Ok "Applied publisher identity from publishers.json"

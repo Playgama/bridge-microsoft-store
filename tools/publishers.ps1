@@ -12,12 +12,20 @@ function Get-PublisherProfile([string]$root, [string]$name) {
 }
 
 # Writes Publisher (CN=) + PublisherDisplayName into the manifest (Identity Name stays per-game).
+# When $appSettingsPath is given, also writes clientId + serviceTicketBaseUrl into appsettings.json
+# so the built package carries the publisher's purchase-verification config.
 # Returns the resolved pfx path + password to sign with.
-function Set-PublisherInfo([object]$p, [string]$root, [string]$manifestPath) {
+function Set-PublisherInfo([object]$p, [string]$root, [string]$manifestPath, [string]$appSettingsPath) {
     [xml]$m = Get-Content $manifestPath
     if ($p.publisher) { $m.Package.Identity.Publisher = [string]$p.publisher }
     if ($p.publisherDisplayName) { $m.Package.Properties.PublisherDisplayName = [string]$p.publisherDisplayName }
     $m.Save($manifestPath)
+
+    if ($appSettingsPath) {
+        $url = if ($p.serviceTicketBaseUrl) { [string]$p.serviceTicketBaseUrl } else { 'https://playgama.com' }
+        $cfg = [ordered]@{ clientId = [string]$p.clientId; serviceTicketBaseUrl = $url }
+        ($cfg | ConvertTo-Json) | Set-Content -Path $appSettingsPath -Encoding UTF8
+    }
 
     $pfxPath = $null
     if ($p.pfx) {

@@ -64,7 +64,7 @@ if ($Publisher) {
     Step "Applying publisher profile: $Publisher"
     . (Join-Path $root 'tools\publishers.ps1')
     $pub = Get-PublisherProfile $root $Publisher
-    [void](Set-PublisherInfo $pub $root $manifest)
+    [void](Set-PublisherInfo $pub $root $manifest (Join-Path $root 'appsettings.json'))
     Ok "Applied publisher identity from publishers.json"
 }
 
