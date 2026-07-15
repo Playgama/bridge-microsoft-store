@@ -86,6 +86,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                     HandleInitialize(core, data);
                     return;
 
+                case ActionName.AUTHORIZE_PLAYER:
+                    _ = HandleAuthorizeAsync(core, data);
+                    return;
+
                 case ActionName.RATE:
                     _ = HandleRateAsync(core, data);
                     return;
