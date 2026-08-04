@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Text.Json.Nodes;
 using System.Xml.Linq;
 
 namespace Playgama.Packager;
@@ -360,6 +361,23 @@ public sealed class MainForm : Form
         }
         pkg.Element(MP + "PhoneIdentity")?.Remove();
         doc.Save(_manifest);
+
+        // Purchase-verification config: write the selected publisher's clientId +
+        // serviceTicketBaseUrl into appsettings.json (the .csproj copies it next to the exe).
+        // Only when a profile is chosen — manual/none leaves the existing file untouched.
+        if (_selectedProfile is not null)
+        {
+            Log("Writing appsettings.json (clientId / service ticket URL)…");
+            var url = string.IsNullOrWhiteSpace(_selectedProfile.ServiceTicketBaseUrl)
+                ? "https://playgama.com" : _selectedProfile.ServiceTicketBaseUrl!;
+            var cfg = new JsonObject
+            {
+                ["clientId"] = _selectedProfile.ClientId ?? "",
+                ["serviceTicketBaseUrl"] = url,
+            };
+            File.WriteAllText(Path.Combine(_root, "appsettings.json"),
+                cfg.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
 
         if (!PathsEqual(i.Game, _gameDir))
         {

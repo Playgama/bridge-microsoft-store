@@ -11,6 +11,8 @@ internal sealed class PublisherProfile
     [JsonPropertyName("publisherDisplayName")] public string? PublisherDisplayName { get; set; }
     [JsonPropertyName("pfx")] public string? Pfx { get; set; }
     [JsonPropertyName("pfxPassword")] public string? PfxPassword { get; set; }
+    [JsonPropertyName("clientId")] public string? ClientId { get; set; }
+    [JsonPropertyName("serviceTicketBaseUrl")] public string? ServiceTicketBaseUrl { get; set; }
 
     public override string ToString() => string.IsNullOrWhiteSpace(Name) ? "(unnamed)" : Name;
 }

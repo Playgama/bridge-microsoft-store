@@ -4,13 +4,17 @@
     "publisher": "CN=REPLACE-WITH-PUBLISHER-GUID-1",
     "publisherDisplayName": "Playgama",
     "pfx": "signing/account1.pfx",
-    "pfxPassword": "11111111"
+    "pfxPassword": "11111111",
+    "clientId": "",
+    "serviceTicketBaseUrl": "https://playgama.com"
   },
   {
     "name": "Playgama (account 2)",
     "publisher": "CN=REPLACE-WITH-PUBLISHER-GUID-2",
     "publisherDisplayName": "Playgama",
     "pfx": "signing/account2.pfx",
-    "pfxPassword": "11111111"
+    "pfxPassword": "11111111",
+    "clientId": "",
+    "serviceTicketBaseUrl": "https://playgama.com"
   }
 ]

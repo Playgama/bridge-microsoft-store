@@ -8,7 +8,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        private const string AppAssetsHost = "appassets.local";
+        // NOT a ".local" name: game builds commonly treat *.local / localhost as "local dev"
+        // and swap the Playgama Bridge for a no-op stub, so the bridge never initializes in the
+        // packaged app. ".example" is IANA-reserved, so it can never collide with a real host.
+        private const string AppAssetsHost = "appassets.example";
         private static readonly Uri AppAssetsBaseUri = new($"https://{AppAssetsHost}/");
 
         private async Task InitializeAsync()
@@ -39,6 +42,8 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             var htmlPath = Path.Combine(AppContext.BaseDirectory, "Assets", "game");
 
+            await web.AddScriptToExecuteOnDocumentCreatedAsync(BuildBridgeCompatScript(htmlPath));
+
             web.SetVirtualHostNameToFolderMapping(
                 AppAssetsHost,
                 htmlPath,
@@ -46,7 +51,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             AppendLog($"Virtual host: {AppAssetsBaseUri}");
 
-            GameWebView.Source = new Uri(AppAssetsBaseUri, "index.html");
+            GameWebView.Source = new Uri(AppAssetsBaseUri, $"index.html?platform_id={PlatformId}");
 
             _ = IncrementLaunchCount();
         }
@@ -84,6 +89,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             {
                 case ActionName.INITIALIZE:
                     HandleInitialize(core, data);
+                    return;
+
+                case ActionName.AUTHORIZE_PLAYER:
+                    _ = HandleAuthorizeAsync(core, data);
                     return;
 
                 case ActionName.RATE:
