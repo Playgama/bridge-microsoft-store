@@ -41,5 +41,13 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         }
 
         private const int MinLaunchCountToPrompt = 3;
+
+        // Delay before the background download of a Store update, so it does not compete
+        // with network traffic during the first minute of play.
+        private const int UpdateDownloadDelaySeconds = 45;
+
+        // Upper bound for installing an already-downloaded Store update on exit, so a hidden
+        // process never outlives the window for long.
+        private const int UpdateInstallTimeoutSeconds = 60;
     }
 }

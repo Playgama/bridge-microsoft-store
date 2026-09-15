@@ -101,6 +101,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             base.OnLoad(e);
 
+            // Deliberately before (and outside) the WebView2 startup below: if the runtime is
+            // missing or init hangs, a Store update is the only way to ship a fix, so the check
+            // must not depend on the game starting.
+            _ = CheckForStorePackageUpdatesAsync();
+
             try
             {
                 await EnsureConfigurationLoadedAsync();
@@ -129,6 +134,11 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             try { await FlushBeforeCloseAsync(); }
             catch (Exception ex) { AppendLog($"Flush on close failed: {ex.Message}"); }
+
+            // The player is leaving, so this is the one safe moment to apply a downloaded
+            // Store update (the install step may end the process - see MainWindow.Update.cs).
+            try { await InstallDownloadedStoreUpdatesAsync(); }
+            catch (Exception ex) { AppendLog($"Update install on close failed: {ex.Message}"); }
 
             Close();             // now _closing == true, so it proceeds
         }
