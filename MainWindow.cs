@@ -148,6 +148,8 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             }
             catch { /* page may be busy */ }
 
+            await WaitForStorageIdleAsync();
+
             // 2) Navigate to a blank page — a real unload, so the browser runs the page's
             //    unload handlers and flushes queued beacons/requests.
             var navigated = new TaskCompletionSource();

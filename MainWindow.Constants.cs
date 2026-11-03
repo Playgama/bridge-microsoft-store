@@ -38,6 +38,9 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
         {
             public const string LaunchCount = "launchCount";
             public const string RateDialogEverShown = "rateDialogEverShown";
+            public const string StorageMigratedHost = "storageMigratedHost";
+            public const string StorageMigrationAttempts = "storageMigrationAttempts";
+            public const string StorageMigrationAbandoned = "storageMigrationAbandoned";
         }
 
         private const int MinLaunchCountToPrompt = 3;

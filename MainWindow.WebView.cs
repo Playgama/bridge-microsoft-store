@@ -8,11 +8,10 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 {
     public sealed partial class MainWindow
     {
-        // NOT a ".local" name: game builds commonly treat *.local / localhost as "local dev"
-        // and swap the Playgama Bridge for a no-op stub, so the bridge never initializes in the
-        // packaged app. ".example" is IANA-reserved, so it can never collide with a real host.
-        private const string AppAssetsHost = "appassets.example";
-        private static readonly Uri AppAssetsBaseUri = new($"https://{AppAssetsHost}/");
+        private const string AppAssetsHost = "ms-store.playgama.com";
+        private static readonly string[] LegacyAppAssetsHosts = { "appassets.example", "appassets.local" };
+
+        private string _gameHost = AppAssetsHost;
 
         private async Task InitializeAsync()
         {
@@ -22,7 +21,14 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
 
             web.Settings.AreDefaultScriptDialogsEnabled = false;
 
+            _gameHost = await PrepareGameHostAsync(web);
+
+            if (_closing)
+                return;
+
             web.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            web.NewWindowRequested += CoreWebView2_NewWindowRequested;
+            web.NavigationStarting += CoreWebView2_NavigationStarting;
 
             // Hide navigator.mediaDevices so games don't prompt for camera/mic permissions.
             var permissionProbeScript = @"
@@ -45,13 +51,15 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
             await web.AddScriptToExecuteOnDocumentCreatedAsync(BuildBridgeCompatScript(htmlPath));
 
             web.SetVirtualHostNameToFolderMapping(
-                AppAssetsHost,
+                _gameHost,
                 htmlPath,
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            AppendLog($"Virtual host: {AppAssetsBaseUri}");
+            var gameBaseUri = new Uri($"https://{_gameHost}/");
 
-            GameWebView.Source = new Uri(AppAssetsBaseUri, $"index.html?platform_id={PlatformId}");
+            AppendLog($"Virtual host: {gameBaseUri}");
+
+            GameWebView.Source = new Uri(gameBaseUri, $"index.html?platform_id={PlatformId}");
 
             _ = IncrementLaunchCount();
         }
@@ -116,15 +124,15 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                     return;
 
                 case ActionName.GET_STORAGE_DATA:
-                    _ = HandleGetStorageDataAsync(core, data);
+                    _ = TrackStorageOperationAsync(HandleGetStorageDataAsync(core, data));
                     return;
 
                 case ActionName.SET_STORAGE_DATA:
-                    _ = HandleSetStorageDataAsync(core, data);
+                    _ = TrackStorageOperationAsync(HandleSetStorageDataAsync(core, data));
                     return;
 
                 case ActionName.DELETE_STORAGE_DATA:
-                    _ = HandleDeleteStorageDataAsync(core, data);
+                    _ = TrackStorageOperationAsync(HandleDeleteStorageDataAsync(core, data));
                     return;
 
                 default:

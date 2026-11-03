@@ -381,5 +381,44 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
                 }.ToString());
             }
         }
+
+        private const int CloseStorageQuietMilliseconds = 400;
+        private const int CloseStorageMaxWaitMilliseconds = 3000;
+
+        private int _storageOperationsInFlight;
+        private long _lastStorageActivity;
+
+        private async Task TrackStorageOperationAsync(Task operation)
+        {
+            _storageOperationsInFlight++;
+            _lastStorageActivity = Environment.TickCount64;
+
+            try
+            {
+                await operation;
+            }
+            finally
+            {
+                _storageOperationsInFlight--;
+                _lastStorageActivity = Environment.TickCount64;
+            }
+        }
+
+        private async Task WaitForStorageIdleAsync()
+        {
+            _lastStorageActivity = Environment.TickCount64;
+            var deadline = _lastStorageActivity + CloseStorageMaxWaitMilliseconds;
+
+            while (_storageOperationsInFlight > 0 || Environment.TickCount64 - _lastStorageActivity < CloseStorageQuietMilliseconds)
+            {
+                if (Environment.TickCount64 >= deadline)
+                {
+                    AppendLog($"Close: storage still busy after {CloseStorageMaxWaitMilliseconds} ms ({_storageOperationsInFlight} in flight)");
+                    return;
+                }
+
+                await Task.Delay(50);
+            }
+        }
     }
 }
