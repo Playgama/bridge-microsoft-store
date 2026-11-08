@@ -29,7 +29,7 @@ namespace Playgama.Bridge.Wrappers.MicrosoftStore
     var ADS_ID = " + JsString(adsId) + @";
 
     // The bridge reads the platform id off window.location at initialize() time.
-    try {
+    if (window.top === window) try {
         var url = new URL(window.location.href);
         if (url.searchParams.get('platform_id') !== PLATFORM_ID) {
             url.searchParams.set('platform_id', PLATFORM_ID);
